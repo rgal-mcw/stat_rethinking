@@ -44,23 +44,29 @@ We get this just by counting how many possible ways get can get [B, W, B] given 
 
 Ways to obtain another [B] given you've chosen [B, W, B]
 
+| **Conjecture** | Ways to Produce "B" | Prior Counts | New Counts |
+| -------------- | ------------------- | ------------ | ---------- |
+| [W, W, W, W]   | 0                   | 0            | 0 x 0 = 0  |
+| [B, W, W, W]   | 1                   | 3            | 3 x 1 = 3  |
+| [B, B, W, W]   | 2                   | 8            | 8 x 2 = 16 |
+| [B, B, B, W]   | 3                   | 9            | 9 x 3 = 27 |
+| B, B, B, B]    | 4                   | 0            | 0 x 4 = 0  |
+
+*You could keep drawing data and mutiplying our prior to get new interpretation of the counts / possibilities to see the outcome. Each "New Counts" would become the prior of your next draw.*
+
+( We make some assumptions here on the independece of the data & such)
+
+> "This updating approach amounts to nothing more than asserting that:
+>
+> (1) when we have previous information suggesting there are $W_{prior}$ ways for a conjecture to produce a previous observation $D_{prior}$ and
+>
+> (2) we acquire new observations $D_{new}$ that the same conjecture can produce in $W_{new}$ ways, then
+>
+> (3) the number of ways the conjecture can account for both $D_{prior}$ as well as $D_{new}$ is just the product of $W_{prior} \times W_{new}$.
+>
+> For example, in the table above the conjecture [B, B, W, W] has $W_{prior} = 8$ ways to produce $D_{prior}$ = [B, W, B]. It also has $W_{new} =2$ ways to produce the new observation $D_{new} = B$. So there are $8 \times 2 = 16$ ways for the conjecture to produce both $D_{prior}$ and $D_{new}$."
 
 
-[W, W, W, W] = 0 x 4 x 4 = 0  | 0 x 0 = 0
-
-[B, W, W, W]  = 1 x 3 x 1 = 3  | 3 x 1 = 3
-
-[B, B, W, W]   = 2 x 2 x 2 = 8  | 8 x 2 = 16
-
-[B, B, B, W]    = 3 x 1 x 3 = 9  | 9 x 3 = 27
-
-[B, B, B, B]     = 4 x 0 x 4 = 0  | 0 x 4 = 0
-
-
-
-*You could keep drawing data, and you'll see that one of the options draw ahead.*
-
-( We make some assumptions here on the independce of the data & such)
 
 We'd likely select the [B, B, B, W] configuration, but it's not overwhelmingly convincing. We could continue drawing data before claiming anything definitive.
 
@@ -72,13 +78,13 @@ What if the factory said:
 
 > "B marbles are rare, but every bag contains at least one. For everyone 1 bag that has 3 B marbles, there are 3 bags that only have one B marble."
 
-| **Conjecture** | Prior Ways | Factory Count | New Count   |
-| -------------- | ---------- | ------------- | ----------- |
-| [W, W, W, W]   | 0          | 0             | 0 x 0 = 0   |
-| [B, W, W, W]   | 3          | 3             | 3 x 3 = 9   |
-| [B, B, W, W]   | 16         | 2             | 16 x 2 = 32 |
-| [B, B, B, W]   | 27         | 1             | 27 x 1 = 27 |
-| [B, B, B, B]   | 0          | 0             | 0 x 0 = 0   |
+| **Conjecture** | Prior Counts | Ways to Produce "B" | New Count   |
+| -------------- | ------------ | ------------------- | ----------- |
+| [W, W, W, W]   | 0            | 0                   | 0 x 0 = 0   |
+| [B, W, W, W]   | 3            | 3                   | 3 x 3 = 9   |
+| [B, B, W, W]   | 16           | 2                   | 16 x 2 = 32 |
+| [B, B, B, W]   | 27           | 1                   | 27 x 1 = 27 |
+| [B, B, B, B]   | 0            | 0                   | 0 x 0 = 0   |
 
 Now our interpretation shifts with this new information, but we wouldn't bet the house on just this data. 
 
@@ -109,14 +115,74 @@ $$
 
 
 
+We can get these plausibilities via:
+
+```R
+ways = c(0, 3, 8, 9, 0)
+way / sum(ways) # our plausibilities as a vector
+```
+
+These plausibilities are *probabilities* - they are non-negative (zero or positive) real numbers that sum to one.
+
+
+
+Each piece of the calculation has a direct partner in applied probability theory. These partners have stereotyped names, so it's worth learning them, as we will see them again and again.
+
+* A conjectured proportion of blue marbles, $p$, is usually called a $\texttt{Parameter}$ value. It's just a way of indexing possible explanations of the data.
+* The relative number of ways that a value $p$ can produce the data is usually called a $\texttt{Likelihood}$. It is derived by enumerating all the possible dat asequences that could have happened and then eliminating those sequences inconsistent with the data. Think Garden of Forking Data.
+* The prior plausibility of any specific $p$ is usually called the $\texttt{Prior Probability}$. 
+* The new, updated plausibility of any specific $p$ is usually called the $\texttt{Posterior Probability}$. 
+
+
+
+(Back to marbel example rq)
+
+**Plausability of [B, W, W, W] after seeing [B,W,B] ** 
+
+$\propto$
+
+**Ways [B,W,W,W] can produce [B,W,W] ** $\times$ **Prior Plausibility [B, W, W, W]**
+
+
+
+Where $\propto$ means *proportional to*. We want to compare the plausbility of each possible bag composition. So it'll be helpful to define $p$ as the proportion of marbles that are blue. 
+
+For [B, W, W, W], $p$  = $\frac{1}{4}$ = 0.25. Also, let $D_{new}$ = [B,W,B]. Now we can write
+
+**Plausibility of $p$ after $D_{new}$**  
+
+$\propto$
+
+**Ways $p$ can produce $D_{new}$** $\times$ **Prior Plausibility of $p$**
+
+
+
+This just means that for any value $p$ can take, we judge the plausibility of that value $p$ as proportional to the number of ways it can get through the garden of forking data. This expression just summarizes the calculations we did in the first table.
+
+
+
+We can then get the probabilities b standardizing the plausibility so that the sums of the the plausibilities for all possible conjectures will be one. 
+
+
+
+![image-20250421131921361](/Users/ry28926/Library/Application Support/typora-user-images/image-20250421131921361.png)
+
+
+
+
+
 ## Building a Model
 
 How to use probability to do typical statistical modeling?
 
 1. Design the Model (data story)
    1. Tells a story of how the data is generated. Helps set-up what the model looks like. 
+   1. This story may be *descriptive*, specifying associations that can be used to predict outcomes, given observations.
+   1. It may be *causal*, a theory of how some events produce other events.
 2. Condition on the data (update)
    1. Update our previous conjectures on the different possibilities.
+      1. Each possible proportion may be more or less plausible, given the evidence.
+   2. A Bayesian model begins with one set of plausibilities assigned to each of these possibilities. These are the prior plausibilities. This is Bayesian Updating.
 3. Evaluate the model (critique)
    1. Compare to the "Large World". Does the model make any sense at all?
 4. Repeat
@@ -140,6 +206,108 @@ Questions:
 3. How to represent uncertainty of estimate?
 
 **Estimates in Bayesian Inference are never points, they are distributions!**
+
+
+
+##### Data Story:
+
+1. The true proportion of water covering the globe is $p$.
+2. A single toss of the glove has a probability $p$ of producing a water (W) observations. It has a probability $1-p$ of producing a land (L) observation.
+3. Each toss of the globe is independent of the others.
+
+##### Bayesian Updating:
+
+1. For the sake of example only, let's program our Bayesian machine to initially assign the same plausibility to every proportion of water, every value of $p$. 
+   1. In our figure, we see that after the first "W" toss, the model updates the plausbilities to a solid line. The plausibility of $p = 0$ has now fallen to exactly 0 (impossible). This is because we know there is *some* water. 
+   2. Likewise, the plausibility of $p > 0.5$ has increased. This is because there is not yet any evidence that there is land on the globe, so the initial plausibilities are modified to be consistent with this.
+   3. In the remaining plots, the additional samples from the globe are introduced to the model, one at a time. Each dashed curve is just the solid curve from the prevbious plot, moving left to right and top to bottom. Ever time a "W" is seen, the peak of the plausibility curve moves to the right, towards larger values of $p$. 
+   4. Notice that every updated set of plausibilities becomes the initial plausibilties for the next observation.
+
+
+
+![image-20250414141726413](/Users/ry28926/Library/Application Support/typora-user-images/image-20250414141726413.png)
+
+##### Evaluate:
+
+1. The Bayesian model learns in a way that is demonstrably optimal, provided that the real, large world is accurately described by the model. Though, the model's certainty is no guarantee that the model is a good one. 
+   1. As the amount of data increases, the globe tossing model will grow increasingly sure of the proportion of water. This means that the curves in the figure will become increasingly narrow and tall, restricting plausible values within a very narrow range.
+   2. But models of all sorts - Bayesian or not - can be very confident about an inference, even when the model is seriously misleading. This is because the inferences are conditional on the model.
+2. It is important to supervise and critique your model's work. Consider again the fact that the updating in the previous section works in any order of data arrival.
+   1. We could shuffle the order of the observations, as long as six W's and three L's remain, and still end up with the same final plausibilitity curve. This is only true, however, because the model assumes that orde is irrelevant to inference. 
+3. The objective is to check the model's adequacy for some purpose. This usually means asking and answering additional questions, beyond those that originally contructed the model. 
+
+
+
+## Components of the Model
+
+Now that we've seen how the Bayesian model behaves, it's time to open up the machine and learn how it works. Consider three different kinds of things we counted in the previous sections:
+
+1. The number of ways each conjecture could produce an observation
+2. The accumulated number of ways each conjecture could produce the entire data
+3. The initial plausibility of each conjectured cause of the data.
+
+Each of these things has a direct analog in conventional probability theory. 
+
+In this section, we will meet these components in some detail and see how each relates to the counting we did earlier in the chapter. 
+
+
+
+#### Variables
+
+The first variable is our target of inference $p$, the proportion of water on the globe. This variable cannot be observed. Unobserved variables are usually called $\texttt{Parameters}$. But while $p$ itself is unobserved, we can infer it from other variables.
+
+The other variables are the observed variables, the counts of water and land. Call the count of water $W$ and the count of land $L$. The sum of these two variables is the number of globe tosses: $N = W + L$ .
+
+
+
+#### Definitions
+
+Once we have the variables listed, we have to define each of them. In defining each, we build a model that relates the variables to one another. 
+
+The goal is to count all the ways the data could arise, given the assumptions. This means, as in the globe tossing model, that for each possible value of the unobserved variables, such as $p$, we need to define the relative number of ways - the probability - that the values of each observed variable could arise. And then for each unobserved variable, we need to define the prior plausibility of each value it could take. 
+
+
+
+##### *Observed Variables*
+
+For the count of water $W$ and land $L$, we define how plausibile any combination of $W$ and $L$ would be, for a specific value of $p$ .This is just like the marble counting we did earlier in this chapter. Each specific value of $p$ corresponds to a specific plausibility of the data. 
+
+So that we don't have to literally count, we can use a mathematical function that tells us the right plausibility. In conventional statistics, a distribution function assigned to an observed variable is usualled called a $\texttt{Likelihood}$. That term has a special meaning in non-Bayesian statistics, however. But when someone says "Likelihood", they will usually mean a distribution function assigned to an observed variable. 
+
+In the case of the globe tossing model, the function we need can be derived directly from the data story. Begin by nominating all of the possible events. There are two: *water (W)* and *land (L)*. There are no other events. When we observe a sample of $W's$ and $L's$ of length $N$, we need to say how likely that exact sample is, out of the universe of potential samples of the same length. 
+
+In this case, once we add our assumptions that (1) every toss is independent of the other tosses and (2) the probability of $W$ is the same on every toss, probability theory provides a unique answer, known as the *binomial distribution*. This is the common "coin tossing" distribution. And so the probability of observing $W$ waters and $L$ lands, with a probability $p$ of water on each toss, is:
+$$
+Pr(W, L | p) = \frac{(W+L)!}{W!L!}p^W(1-p)^L
+$$
+Which reads:
+
+> *The counts of "water" W and "land" L are distributed binomially, with probability p of "water" on each toss*.
+
+And the binomial distribution formula is built into R, so we can easily compute this likelihood of the data - six $W's$ in nine tosses - any any value of $p$ with:
+
+```R
+dbinom(6, size=9, prob=0.5) #=0.1640625
+```
+
+That number is the relative number of ways to get six water, holding $p$ at 0.5 and $N = W+L$ at nine. So it does the job of counting relative number of paths through the garden. Change the $0.5$ to any other value, to see how the value changes. 
+
+
+
+##### Unobserved Variables
+
+The distributions we assign to the observed variables typically have their own variables. In the binomial above, the is $p$, the probability of sampling water. Since $p$ is not observed, we usually call it a $\texttt{Parameter}$. Even though we cannot observe $p$, we still have to define it. 
+
+In statistical modeling, many of the most common questions we ask about data are answered directly by parameters:
+
+* What is the average difference between treatment groups?
+* How strong is the association between treatment and outcome?
+* Does the effect of the treatment depend upon a covariate?
+* How much variation is there among groups?
+
+**For every parameter you intend your Bayesian machine to consider, you must provide a distribution of prior plausibility, its $\texttt{Prior}$.** A Bayesian machine must have an initial plausibility assignment for each possible value of the parameter, and these initial assignments do useful work. Back in the previous figure, we saw the machine did it's learning one piece of data at a time. Each estimate becomes the prior for the next step. But this doesn't resolve the problem of providing a prior, because at the dawn of time, when $N=0$ , the machine still had an initial state of information for the parameter $p$ : a flat line specifying equal plausibility for every possible value. 
+
+So where do priors come from? They are both engineering assumptions, chosen to help the machine learn, and scientific assumptions, chosen to reflect what we know about a phenomenon, The flat prior is very common, but it is hardly ever the best prior. 
 
 
 
@@ -234,9 +402,13 @@ Probability: Non-negative values that sum to one
 
 Suppose W = 20, L = 10. Then *p* = 0.5 has
 $$
-2^W \times 2^L = 1073741824
+2^{20} \times 2^{10} = 1073741824
 $$
-ways to produce sample. Better to convert to probability. This is from the formula above.
+ways to produce sample. This is from the formula above. 
+
+
+
+Better to convert to probability. It's hard to use raw counts. First, we only care about the relative values (i.e. counts 3, 8, and 9 could just as easily be 30, 80, and 90 and the meaning would be the same). Second, as the amount of data grows, the counts will very quickly grow large (from Equation 4). Explicitely counting isn't practical. 
 
 
 
@@ -261,6 +433,10 @@ cbind(p, ways, prob)
 ```
 
 Output yields the same probability information as the table above, and we can graph the distribution of our posterior.
+
+
+
+
 
 
 
@@ -347,9 +523,9 @@ The product at the end is the *relative number of ways to observe the sample*.
 
 
 
-### Ten Tosses of the Globe (Apply Testing)
+### Nine Tosses of the Globe (Apply Testing)
 
-We start with a "flat prior" and observe our distribution "updating" as we consider more data over 10 tosses. Each function is simply:
+We start with a "flat prior" and observe our distribution "updating" as we consider more data over 9 tosses. Each function is simply:
 $$
 p^W(1-p)^L
 $$
