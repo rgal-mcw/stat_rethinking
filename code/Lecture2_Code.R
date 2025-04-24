@@ -15,17 +15,38 @@ ways = sapply(p, function(q) (q*4)^W * ((1-q) * 4)^L) # This is our function, co
 prob = ways / sum(ways)
 cbind(p,ways,prob) # We're simply counts the ways that the data can occur!
 
-## Testing
-### Test Before You Est(imate)
+###
+# Grid Approximation
 
-### Code a generative simulation
-sim_globe = function (p = 0.7, N = 9) { # Code our generative simulation (with defaults)
-  sample(c("W", "L"), size=N, prob=c(p, 1-p), replace=T)
-}
-sim_globe() # Each output is a new draw of samples from our experiment
-            # i.e. 9 new tosses
+# define grid
+## Hypothetically, these are values for the proportion of water on the globe.
+## This is the grid that we use instead of considering every possible value between 0 and 1.
+## The more points we have on our grid, the better our approximation.
+grid_points = 20
+p_grid = seq(from=0, to=1, length.out=grid_points)
 
-replicate(sim_globe(p=0.5, N=9), n=10) # Make 10 pulls
+# define prior
+## We are using the uniform prior, meaning we assign the same initial plausibility to every value of p in our grid.
+## The value 1 is arbitrary here, what matters is that they're the same.
+prior = rep(1,grid_points)
 
+## Other priors
+prior = ifelse( p_grid < 0.5, 0, 1)
+prior = exp( -5*abs( p_grid - 0.5))
 
+# compute likelihood at each value in grid
+## This is the likelihood of observing our data for each possible proportion of water.
+## dbinom() uses binomial probability mass function. This is appropriate here because
+## each globe toss is a binary outcome (W or L), and we assume the tosses are independent
+## with a constant prob of water.
+likelihood = dbinom(6, size = 9, prob = p_grid)
 
+# compute product of likelihood and prior
+unstd.posterior = likelihood * prior
+
+# standardize the posterior, so it sums to 1
+posterior = unstd.posterior / sum(unstd.posterior)
+
+plot( p_grid, posterior, type="b",
+      xlab = "prob of water", ylab = "posterior prob")
+mtext( "20 points" )

@@ -252,7 +252,7 @@ In this section, we will meet these components in some detail and see how each r
 
 
 
-#### Variables
+### Variables
 
 The first variable is our target of inference $p$, the proportion of water on the globe. This variable cannot be observed. Unobserved variables are usually called $\texttt{Parameters}$. But while $p$ itself is unobserved, we can infer it from other variables.
 
@@ -260,7 +260,7 @@ The other variables are the observed variables, the counts of water and land. Ca
 
 
 
-#### Definitions
+### Definitions
 
 Once we have the variables listed, we have to define each of them. In defining each, we build a model that relates the variables to one another. 
 
@@ -309,7 +309,268 @@ In statistical modeling, many of the most common questions we ask about data are
 
 So where do priors come from? They are both engineering assumptions, chosen to help the machine learn, and scientific assumptions, chosen to reflect what we know about a phenomenon, The flat prior is very common, but it is hardly ever the best prior. 
 
+There is no law mandating we use only one prior. If you don't have a strong argument for any particular prior, then try different ones. Because the prior is an assumption, it should be interrogated like other assumptions: by altering it and checking how sensitive inference is to the assumption. 
 
+
+
+##### A model is born
+
+With all the above work, we can now summarize our model. The observed variables $W$ and $L$ are given relative counts through the binomial distribution. So we can write, as a shortcut:
+$$
+W \sim Binomial(N,p)
+$$
+where $N = W + L$. **The above is just a convention for communicating the assumption that the relative counts of ways to realize $W$ in $N$ trials with probability $p$ on each trial comes from the binomial distribution.**
+
+And the unoberved parameter $p$ similarly gets:
+$$
+p \sim Uniform(0,1)
+$$
+This means that $p$ has a uniform -- flat -- prior over its entire possible range, from zero to one. As mentioned earlier, this is obviously not the best we could do, since we know the Earth has more water than land, even if we do not know the exact proportion yet. 
+
+
+
+### Making the Model Go
+
+Once you have named all the variables and chosen definitions for each, a Bayesian model can update all of the prior distributions to their purely logicial consequences: the $\texttt{Posterior Distribution}$. 
+
+For every unique combination of data, likelihood, parameters, and prior, there is a unique posterior distribution. This distribution contains the relative plausibility of different parameter values, conditional on the data and model. The posterior distribution takes the form of the probabiliy of the parameters, conditional on the data. This case, it would be $Pr(p| W, L)$, the probability of each possible value of $p$, conditional on the specific $W$ and $L$ that we observed. 
+
+#### Bayes' theorem
+
+The mathematical definition of the posterior distribution arises from $\texttt{Bayes' Theorem}$. 
+$$
+Pr(p|W,L) = \frac{Pr(W,L|p)Pr(p)}{Pr(W,L)}
+$$
+or
+$$
+Posterior = \frac{Pr(Data) \times Prior}{Avg.Prob.of.Data}
+$$
+Is says that the probability of any particular value of $p$, considering the data, is equal to the product of the relative plausibility of the data, conditional on $p$, and the prior plausibility of $p$, divided by this thing $Pr(W,L)$, which we will call the *average probability of the data*. 
+
+The average probability of the data, $Pr(W,L)$, can be confusing. It is commonly called the "evidence" or the "average likelihood", neither of which is a transparent name. **The probability $Pr(W,L)$ is literally the *average* probability of the data. Averaged over what? Averaged over the prior.** It's job is just to standardize the posterior, to ensure it sum (integrates) to one. 
+$$
+Pr(W,L) = E(Pr(W,L|p)) = \int Pr(W,L|p)Pr(p)dp
+$$
+Where $E$ means *expectation*. Such averages are commonly called *marginals* in mathematical statistics, and so you may also see this same probability called a *marginal likelihood*. 
+
+**The key lesson is that the posterior is proportional to the product of the prior and the probability of the data.** Why? Because for each specific value of $p$, the number of paths through the garden of forking data is the product of the prior number of paths and the new number of paths. Multiplication is just compressed counting. The average probability on the bottom just standardizes the counts so they sum to one.
+
+
+
+![image-20250421150517542](/Users/ry28926/Library/Application Support/typora-user-images/image-20250421150517542.png)
+
+
+
+This figure illustrates the multiplicitive interaction of a prior and a probability of data. One each row, a prior on the left is multiplied by the probability of data in the middle to produce a posterior on the right. The probability of data in each case is the same. The priors however vary. As a result, the posterior distributions vary.
+
+
+
+#### Motors
+
+Recall that your model is a machine with built in definitions for likelihood, the parameters, and the prior. At its heart lies a motor that processes data, producing a posterior distribution. The action of this motor can be thought of as *conditioning* the prior on the data. This conditioning is governed by the rules of probability theory, which defines a uniquely logical posterior for set of assumptions and observations.
+
+Various numerical techniques are needed to approximate the mathematics that follows from the definition of Bayes' theorem. In this text, we will meet three different conditioning engines, numerical techniques for computing posterior distributions:
+
+1. Grid Approximation
+2. Quadratic Approximation
+3. Markov Chain Monte Carlo (MCMC)
+
+There are many other engines, and new ones are being invented all the time. But the three here are common and widely useful. In addition, as we learn them, we will also learn principles that will help us understand other techniques.
+
+
+
+##### Grid Approximation
+
+One of the simpliest conditioning techniques is grid approximation. While most parameters are *continuous*, it turns our that we can achieve an excellent approximation of the continuous posterior distribution by considering only a finite grid of parameter values. At any particular value of a parameter $p'$, it's a simple matter to compute the posterior probability: just multiply the prior probability of $p'$ by the likelihood of $p'$. Repeating this procedure for each value in the grid generates an approimate picture of the exact posterior distribution. This is $\texttt{Grid Approximation}$. 
+
+Grid Approxmiation will mainly be used an a pedagogical tool, as learning it forces the user to really understand the nature of Bayesian updating. Though, in reality this method is not very practical as it scales very poorly. In this context of the globe tossing problem, grid approximation works extremely well. Here is thr recipe:
+
+1. Define the grid. This means you decide how many points to use in estimating the posterior, and then you make a list of the parameter values on the grid.
+2. Compute the value of the prior at each parameter value on the grid.
+3. Compute the likelihood at each parameter value.
+4. Compute the unstandardized posterior at each parameter value, by multiplying the prior by the likelihood. 
+5. Finally, standardize the posterior, by dividing each value by the sum of all value. 
+
+
+
+*R Code:*
+
+```R
+# Grid Approximation
+
+# define grid
+## Hypothetically, these are values for the proportion of water on the globe.
+## This is the grid that we use instead of considering every possible value btwn 0 and 1
+## The more points we have on our grid, the better our approximation.
+p_grid = seq(from=0, to=1, length.out=20)
+
+# define prior
+## We are using the uniform prior, meaning we assign the same initial plausibility to every value of p in our grid.
+## The value 1 is arbitrary here, what matters is that they're the same.
+prior = rep(1,20)
+
+# compute likelihood at each value in grid
+## This is the likelihood of observing our data for each possible proportion of water.
+## dbinom() uses binomial probability mass function. This is appropriate here because
+## each globe toss is a binary outcome (W or L), and we assume the tosses are independent
+## with a constant prob of water.
+likelihood = dbinom(6, size = 9, prob = p_grid)
+
+# compute product of likelihood and prior
+unstd.posterior = likelihood * prior
+
+# standardize the posterior, so it sums to 1
+posterior = unstd.posterior / sum(unstd.posterior)
+
+plot( p_grid, posterior, type="b",
+      xlab = "prob of water", ylab = "posterior prob")
+mtext( "20 points" )
+```
+
+We can adjust the amount of points in p_grid and prior to adjust out outcome. We'd see a worse approximation if we set it to, say, 5. We'd get a much more accurate density if we used 100,000 points (though this won't be much of a change in the inference). 
+
+
+
+Now, we can try different priors:
+
+```R
+# ... above code but with:
+prior = ifelse( p_grid < 0.5, 0, 1) # No less than half water
+prior = exp( -5*abs( p_grid - 0.5)) # Weighted to greater then half water
+```
+
+
+
+##### Quadratic Approximation
+
+Grid approximation is fine for simple models, but it's not so good for more complex models. The reason is that the number of unique values to consider in the grid grows rapidly as the number of parameters in our model increases. The globe is a single-parameter model, so a grid of 100 or 1000 values is easy - but for 2 parameters approximated by 100 values already reaches $100^2 = 10000$ to compute. At 10 parameters we're looking at a grid of billions. So is to say, it scales poorely.
+
+$\texttt{Quadratic Approximation}$ is the next step. Under quite general conditions, the region near the peak of the posterior distribution will be nearly Gaussian - or "normal" - in shape. This means the posterior distribution can be usefully approximated by a Gaussian distribution. This is convenient since we only near a mean and variance to describe it. 
+
+A Gaussian approximation is called a "quadratice approximation" because the logarithm of a Gaussian distribution forms a parabola. For many of the most common procedures in applied statistics - linear regression, for example - the approximation works very well. Often, it is even exactly correct. And computationally, quadratic approximation is very inexpensive compared to Grid Approximation and MCMC. 
+
+Our Steps:
+
+1. Find the **posterior mode**. This is usually accomplished by some optimization algorithm, a procedure that virtually "climbs" the posterior distribution, as if it were a mountain. The golem doesn't know where the peak is, but it does know the slope under its feet. There are many well-developed optimization procedures that all try to find peaks.
+2. Once you find the peak of the posterior, you must estimate the curvature neaar the peak. This curavature is sufficient to compute a quadratic approximation of the entire posterior distribtution. In some cases, these calculations can be done analytically, but usually the computer uses some numerical technique instead.
+
+
+
+To compute the quadratic approximation for the globe tossing data, we'll use a tool in the `rethinking` package: `quap`. 
+
+*R Code*
+
+```R
+# Quadratic Approximation
+library(rethinking)
+
+globe.qa = quap(
+  alist(
+    W ~ dbinom( W+L, p), # binomial likelihood
+    p ~ dunif(0,1) # uniform prior
+  ),
+  data = list(W = 6, L = 3) )
+
+# Display summary of quadratic approximation
+precis( globe.qa )
+```
+
+To use `quap`, you provide a *formula*, a list of *data*. The formula defines the probability of the data and the prior. 
+
+```
+  mean   sd 5.5% 94.5%
+p 0.67 0.16 0.42  0.92
+```
+
+The function `precis` present a brief summary of the quadratic approximation. In this case, it shows the posterior mean value of $p = 0.67$, which it calls the "Mean". The curvature is labeled "sd". This value is the standard deviation of the posterior distribution, while the mean value is its peak. Finally, the last two value in the `precis()` output shows the 89% percentile interval. You can read this kind of approximation as: *Assuming the posterior is Gaussian, it is maximiazed at 0.67, and its standard deviation is 0.16*. 
+
+Since we already know the posterior, let's see how good the approximation is. This approach will be analytical and uses `dbeta`. 
+
+```R
+# analytical calc
+W = 6
+L = 3
+curve( dbeta(x, W+1, L+1), from = 0, to = 1)
+# quadratic approximation
+curve( dnorm(x, 0.67, 0.16), lty = 2, add=T)
+```
+
+<img src="/Users/ry28926/Library/Application Support/typora-user-images/image-20250423220745202.png" alt="image-20250423220745202" style="zoom: 50%;" />
+
+The dashed curve is the quadratic approximation, and the solid is the analytical posterior. We can increase the sample size to make the dashed line approach the correct solid line. We can see how this shows that when we get more data, our accuracy dramatically improves.
+
+This phenomenon, where the quadratic approximation improves with the amount of data, is very common. It's one of the reasons so many classical statistical procedures are nervous about sample size. It's because those procedures use quadratic approximations that are only known to be safe with infinite data. 
+
+Using the quadratic approximation in a Bayesian context brings with it all the same concerns. But you can always lean on some algorithm other than quadratic approximation, if you have doubts. Indeed, grid approximation works well with very small samples, because in such cases the model must be simple and the computation will be quite fast. You can also use MCMC.
+
+
+
+##### Markov chain Monte Carlo
+
+There are a lot of important model types, like multilevel (mixed-effects) models, for which neither grid approximation nor quadreatic approximation is always satisfactory. Such models have 100, 1000, or even 10000s of parameters. Furthermore, multilevel models do not always allow us to write down a single, unified function for the posterior distribution. This means that the function to maximuze (when finding the MAP) is not known, but must be computed in pieces.
+
+As a result, various counterintuitive model fitting technoiques have arisen. The most popular of these is the $\texttt{Markov Chain Monte Carlo}$ (MCMC), which is a family of conditioning engines capable of handling highly complex models. It iis fair to say that MCMC is largely responsible for the insurgence of Bayesian data analysis that began in the 1990s. While MCMC is older then the 1990s, affordable computer power is not. 
+
+The conceptual challenge with MCMC lies in its highly non-obvious strategy. Instead of attempting to compute or approximate the posterior distribution directly, MCMC techniques merely draw samples from the posterior. You end up with a collection of parameter values, and the frequencies of these values correspond to the posterior plausibilities. You can then build a picture of the posterior from the histogram of these samples.
+
+We nearly always work directly with these samples, rather than first constructing some mathematical estimate from them. And the samples are in many ways more convenient than having the posterior, because they are easier to think with. The next chapter will have us start thinking with samples.
+
+
+
+*R Code*
+
+Monte Carlo Globe Tossing - A pre-taste
+
+```R
+# MCMC Globe Tossing
+nsample = 1000 # 1000 draws from posterior
+p = rep(NA, nsample) # 1000 empty spaces in a vector
+p[1] = 0.5 # our prior, where we will start from
+W = 6
+L = 3
+
+for (i in 2:nsample) {
+  p_new = rnorm(1, p[i-1], 0.1)
+  if (p_new < 0) p_new = abs(p_new)
+  if (p_new > 1) p_new = 2-p_new
+  q0 = dbinom(W, W+L, p[i-1])
+  q1 = dbinom(W, W+L, p_new)
+  p[i] = ifelse( runif(1) < q1/q0, p_new, p[i-1])
+}
+
+dens(p, xlim=c(0,1))
+curve(dbeta(x, W+1, L+1), lty=2, add=T)
+```
+
+<img src="/Users/ry28926/Library/Application Support/typora-user-images/image-20250423223218622.png" alt="image-20250423223218622" style="zoom:50%;" />
+
+Crazy tbh. We will explain the algorithm, the $\texttt{Metropolis Algorithm}$ in Chapter 9.
+
+## Summary
+
+This chapter introduced the conceptual mechanics of Bayesian data analysis. The target
+of inference in Bayesian inference is a posterior probability distribution. Posterior probabilities
+state the relative numbers of ways each conjectured cause of the data could have produced the data. 
+These relative numbers indicate plausibilities of the different conjectures.
+These plausibilities are updated in light of observations, a process known as Bayesian updating.
+
+More mechanically, a Bayesian model is a composite of variables and distributional definitions for 
+these variables. The probability of the data, often called the likelihood, provides
+the plausibility of an observation (data), given a fixed value for the parameters. The prior
+provides the plausibility of each possible value of the parameters, before accounting for the
+data. The rules of probability tell us that the logical way to compute the plausibilities, afte
+accounting for the data, is to use Bayes’ theorem. This results in the posterior distribution.
+In practice, Bayesian models are fit to data using numerical techniques, like grid approximation,
+quadratic approximation, and Markov chain Monte Carlo. Each method imposes
+different trade-offs.
+
+
+
+
+
+
+
+## Random Notes from the Lecture
 
 ### Workflow
 
