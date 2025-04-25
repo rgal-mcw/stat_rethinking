@@ -50,3 +50,45 @@ posterior = unstd.posterior / sum(unstd.posterior)
 plot( p_grid, posterior, type="b",
       xlab = "prob of water", ylab = "posterior prob")
 mtext( "20 points" )
+
+###
+# Quadratic Approximation
+library(rethinking)
+
+globe.qa = quap(
+  alist(
+    W ~ dbinom( W+L, p), # binomial likelihood
+    p ~ dunif(0,1) # uniform prior
+  ),
+  data = list(W = 6, L = 3) )
+
+# Display summary of quadratic approximation
+precis( globe.qa )
+
+# See how this matches an analytical calculation
+# analytical calc
+W = 6
+L = 3
+curve( dbeta(x, W+1, L+1), from = 0, to = 1)
+# quadratic approximation
+curve( dnorm(x, 0.67, 0.16), lty = 2, add=T)
+
+###
+# MCMC Globe Tossing
+nsample = 1000 # 1000 draws from posterior
+p = rep(NA, nsample) # 1000 empty spaces in a vector
+p[1] = 0.5 # our prior, where we will start from
+W = 6
+L = 3
+
+for (i in 2:nsample) {
+  p_new = rnorm(1, p[i-1], 0.1)
+  if (p_new < 0) p_new = abs(p_new)
+  if (p_new > 1) p_new = 2-p_new
+  q0 = dbinom(W, W+L, p[i-1])
+  q1 = dbinom(W, W+L, p_new)
+  p[i] = ifelse( runif(1) < q1/q0, p_new, p[i-1])
+}
+
+dens(p, xlim=c(0,1))
+curve(dbeta(x, W+1, L+1), lty=2, add=T)
